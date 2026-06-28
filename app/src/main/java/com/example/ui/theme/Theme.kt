@@ -13,32 +13,34 @@ import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme =
   darkColorScheme(
-    primary = BrandRed,
-    secondary = AccentGold,
-    tertiary = BorderColor,
+    primary = BrandRedLight,
+    secondary = AccentGoldLight,
+    tertiary = BorderColorDark,
     background = BackgroundDark,
     surface = SurfaceDark,
-    surfaceVariant = SurfaceDark,
-    onPrimary = TextDark,
-    onSecondary = TextDark,
+    surfaceVariant = SurfaceVariantDark,
+    onPrimary = Color.White,
+    onSecondary = Color.White,
     onBackground = TextDark,
     onSurface = TextDark,
-    onSurfaceVariant = TextDark
+    onSurfaceVariant = Color(0xFFAAAAAA),
+    surfaceContainer = SurfaceVariantDark
   )
 
 private val LightColorScheme =
   lightColorScheme(
-    primary = BrandRed,
-    secondary = AccentGold,
-    tertiary = BorderColor,
-    background = BackgroundTheme,
-    surface = CardBackground,
+    primary = BrandRedLight,
+    secondary = AccentGoldLight,
+    tertiary = BorderColorLight,
+    background = BackgroundThemeLight,
+    surface = CardBackgroundLight,
     surfaceVariant = Color.White,
     onPrimary = Color.White,
     onSecondary = Color.White,
-    onBackground = TextPrimary,
-    onSurface = TextTitle,
-    onSurfaceVariant = TextPrimary
+    onBackground = TextPrimaryLight,
+    onSurface = TextTitleLight,
+    onSurfaceVariant = TextSecondaryLight,
+    surfaceContainer = NavBarBackgroundLight
   )
 
 @Composable

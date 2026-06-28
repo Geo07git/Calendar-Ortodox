@@ -56,6 +56,18 @@ class CalendarRepository {
         return result
     }
 
+    fun searchHolidays(query: String): List<Pair<LocalDate, OrthodoxDay>> {
+        if (query.isBlank()) return emptyList()
+        val lowerQuery = query.lowercase()
+        return holidays.filter { 
+            it.title.lowercase().contains(lowerQuery) || 
+            it.synaxarion.lowercase().contains(lowerQuery) 
+        }.map { 
+            val currentYear = LocalDate.now().year
+            Pair(LocalDate.of(currentYear, it.month, it.day), it)
+        }
+    }
+
     private fun calculateGeneralFasting(date: LocalDate): FastingType {
         // Wednesday and Friday are generally fast days
         return if (date.dayOfWeek.value == 3 || date.dayOfWeek.value == 5) {

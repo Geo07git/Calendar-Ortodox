@@ -59,7 +59,11 @@ class MainActivity : ComponentActivity() {
         setupDailyNotification()
         
         setContent {
-            MyApplicationTheme {
+            val context = LocalContext.current
+            val themePrefs = remember { com.example.data.ThemePreferences.getInstance(context) }
+            val isDarkMode by themePrefs.isDarkModeFlow.collectAsState()
+
+            MyApplicationTheme(darkTheme = isDarkMode) {
                 CalendarAppScreen()
             }
         }
@@ -127,31 +131,70 @@ fun MainTabsScreen(
     onNavigateToDetails: (String) -> Unit
 ) {
     var currentTab by remember { mutableStateOf("calendar") }
+    var isSearching by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf(emptyList<Pair<LocalDate, OrthodoxDay>>()) }
+
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.length >= 2) {
+            searchResults = viewModel.search(searchQuery)
+        } else {
+            searchResults = emptyList()
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(BrandRed),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("†", color = Color.White, fontSize = 24.sp)
+                    if (isSearching) {
+                        TextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Caută sfinți, praznice...", color = TextSecondary) },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                cursorColor = BrandRed,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            ),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(BrandRed),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("†", color = Color.White, fontSize = 24.sp)
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Calendar Ortodox", style = MaterialTheme.typography.titleLarge, color = TextPrimary)
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("Calendar Ortodox", style = MaterialTheme.typography.titleLarge, color = TextPrimary)
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /*TODO*/ }) {
-                        Icon(Icons.Outlined.Search, contentDescription = "Căutare", tint = TextPrimary)
-                    }
-                    IconButton(onClick = { /*TODO*/ }) {
-                        Icon(Icons.Outlined.MoreVert, contentDescription = "Mai multe", tint = TextPrimary)
+                    if (isSearching) {
+                        IconButton(onClick = { 
+                            isSearching = false
+                            searchQuery = ""
+                        }) {
+                            Icon(Icons.Outlined.Close, contentDescription = "Închide căutarea", tint = TextPrimary)
+                        }
+                    } else {
+                        IconButton(onClick = { isSearching = true }) {
+                            Icon(Icons.Outlined.Search, contentDescription = "Căutare", tint = TextPrimary)
+                        }
+                        IconButton(onClick = { /*TODO*/ }) {
+                            Icon(Icons.Outlined.MoreVert, contentDescription = "Mai multe", tint = TextPrimary)
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -207,10 +250,48 @@ fun MainTabsScreen(
         containerColor = BackgroundTheme,
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
-        when (currentTab) {
-            "calendar" -> CalendarContent(viewModel, innerPadding, onNavigateToDetails)
-            "prayers" -> com.example.ui.screens.PrayersContent(innerPadding)
-            "ordinances" -> com.example.ui.screens.OrdinancesContent(innerPadding)
+        if (isSearching) {
+            SearchResultsContent(searchResults, innerPadding, onNavigateToDetails)
+        } else {
+            when (currentTab) {
+                "calendar" -> CalendarContent(viewModel, innerPadding, onNavigateToDetails)
+                "prayers" -> com.example.ui.screens.PrayersContent(innerPadding)
+                "ordinances" -> com.example.ui.screens.OrdinancesContent(innerPadding)
+            }
+        }
+    }
+}
+
+@Composable
+fun SearchResultsContent(
+    searchResults: List<Pair<LocalDate, OrthodoxDay>>,
+    innerPadding: PaddingValues,
+    onNavigateToDetails: (String) -> Unit
+) {
+    val dateFormatter = DateTimeFormatter.ofPattern("dd MMM")
+    LazyColumn(
+        modifier = Modifier
+            .padding(innerPadding)
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (searchResults.isEmpty()) {
+            item {
+                Text(
+                    text = "Nu am găsit rezultate. Încearcă alte cuvinte cheie.",
+                    color = TextSecondary,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        } else {
+            items(searchResults) { (date, day) ->
+                UpcomingDayCard(
+                    date = date,
+                    day = day,
+                    onClick = { onNavigateToDetails(date.toString()) }
+                )
+            }
         }
     }
 }
@@ -361,7 +442,7 @@ fun TodayDetailsCard(notificationsEnabled: Boolean, onNotificationToggle: (Boole
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .border(1.dp, BorderColor, RoundedCornerShape(16.dp))
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -414,7 +495,7 @@ fun InfoRow(title: String, subtitle: String) {
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .border(1.dp, BorderColor, RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center
         ) {
@@ -432,7 +513,7 @@ fun UpcomingDayCard(date: LocalDate, day: OrthodoxDay, onClick: () -> Unit) {
             .fillMaxWidth()
             .border(1.dp, BorderColor, RoundedCornerShape(16.dp))
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(

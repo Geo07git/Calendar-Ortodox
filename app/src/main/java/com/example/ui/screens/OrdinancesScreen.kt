@@ -86,7 +86,7 @@ fun OrdinanceCard(category: OrdinanceCategory) {
         modifier = Modifier
             .fillMaxWidth()
             .border(1.dp, BorderColor, RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

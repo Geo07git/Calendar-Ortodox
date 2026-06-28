@@ -20,10 +20,13 @@ import com.example.ui.theme.*
 fun SettingsScreen(onNavigateBack: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { com.example.data.NotificationPreferences(context) }
+    val themePrefs = remember { com.example.data.ThemePreferences.getInstance(context) }
     
     var notifyHolidays by remember { mutableStateOf(prefs.notifyHolidays) }
     var notifySaints by remember { mutableStateOf(prefs.notifySaints) }
     var notifyFasting by remember { mutableStateOf(prefs.notifyFasting) }
+    
+    val isDarkMode by themePrefs.isDarkModeFlow.collectAsState()
 
     Scaffold(
         topBar = {
@@ -59,11 +62,18 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color.White)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .border(1.dp, BorderColor, RoundedCornerShape(24.dp))
                     .padding(16.dp)
             ) {
                 Column {
+                    SettingToggleRow(
+                        title = "Tema Întunecată",
+                        subtitle = "Activează modul întunecat pentru o citire mai relaxantă",
+                        checked = isDarkMode,
+                        onCheckedChange = { themePrefs.isDarkModeEnabled = it }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = BorderColor)
                     SettingToggleRow(
                         title = "Sărbători cu cruce roșie",
                         subtitle = "Notificări pentru marile praznice și sfinți importanți",

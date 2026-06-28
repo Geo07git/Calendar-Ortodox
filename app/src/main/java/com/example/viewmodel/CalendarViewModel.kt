@@ -30,4 +30,8 @@ class CalendarViewModel : ViewModel() {
     fun getDayInfoSync(date: LocalDate): OrthodoxDay {
         return repository.getDayInfo(date)
     }
+
+    fun search(query: String): List<Pair<LocalDate, OrthodoxDay>> {
+        return repository.searchHolidays(query)
+    }
 }

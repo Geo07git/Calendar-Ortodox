@@ -9,7 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,11 +22,42 @@ import com.example.data.OrthodoxDay
 import com.example.ui.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import com.example.BuildConfig
+import com.example.data.Content
+import com.example.data.GenerateContentRequest
+import com.example.data.Part
+import com.example.data.RetrofitClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailsScreen(day: OrthodoxDay, date: LocalDate, onNavigateBack: () -> Unit) {
     val dateFormatter = DateTimeFormatter.ofPattern("dd MMMM yyyy")
+    
+    var aiSynaxarion by remember { mutableStateOf<String?>(null) }
+    var isLoadingAi by remember { mutableStateOf(false) }
+    var aiError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(date, day.title) {
+        isLoadingAi = true
+        aiError = null
+        try {
+            val response = withContext(Dispatchers.IO) {
+                val apiKey = BuildConfig.GEMINI_API_KEY
+                val prompt = "Scrie un scurt sinaxar ortodox pentru ziua de ${date.format(dateFormatter)} (Sărbătoarea: ${day.title}). Descrie viața sfinților prăznuiți și semnificația duhovnicească. Fii respectuos, concis și evită detaliile neortodoxe."
+                val request = GenerateContentRequest(
+                    contents = listOf(Content(parts = listOf(Part(text = prompt))))
+                )
+                RetrofitClient.service.generateContent(apiKey, request)
+            }
+            aiSynaxarion = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+        } catch (e: Exception) {
+            aiError = "Nu s-a putut încărca sinaxarul detaliat."
+        } finally {
+            isLoadingAi = false
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -92,8 +123,15 @@ fun DetailsScreen(day: OrthodoxDay, date: LocalDate, onNavigateBack: () -> Unit)
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            DetailCard(title = "Sinaxar", content = day.synaxarion)
-            DetailCard(title = "Semnificație", content = day.meaning)
+            if (isLoadingAi) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally), color = BrandRed)
+                Text("Se încarcă sinaxarul...", modifier = Modifier.align(Alignment.CenterHorizontally), color = TextSecondary)
+            } else if (aiSynaxarion != null) {
+                DetailCard(title = "Sinaxar (Generat AI)", content = aiSynaxarion!!)
+            } else {
+                DetailCard(title = "Sinaxar", content = day.synaxarion)
+                DetailCard(title = "Semnificație", content = day.meaning)
+            }
             
             // Icon Placeholder
             Box(
@@ -122,7 +160,7 @@ fun DetailCard(title: String, content: String) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .border(1.dp, BorderColor, RoundedCornerShape(24.dp))
             .padding(20.dp)
     ) {
