@@ -1,7 +1,5 @@
 package com.example.ui.screens
 
-import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,21 +7,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.*
-import java.util.Locale
 
 data class Prayer(val title: String, val content: String)
 
@@ -46,78 +37,9 @@ val prayersList = listOf(
     )
 )
 
-@Composable
-fun rememberTextToSpeech(): TextToSpeech? {
-    val context = LocalContext.current
-    var tts by remember { mutableStateOf<TextToSpeech?>(null) }
-
-    DisposableEffect(context) {
-        val textToSpeech = TextToSpeech(context) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                val locale = Locale("ro", "RO")
-                tts?.language = locale
-                
-                // Set pitch lower for a graver voice ("accent grav") and slower for prayers
-                tts?.setPitch(0.6f)
-                tts?.setSpeechRate(0.85f)
-                
-                // Try to find a specific male voice if the TTS engine provides one for Romanian
-                try {
-                    val voices = tts?.voices
-                    if (voices != null) {
-                        // In Google TTS, Romanian male voices often end with -B or -C
-                        val maleVoice = voices.firstOrNull {
-                            it.locale.language == "ro" && (
-                                it.name.contains("male", ignoreCase = true) || 
-                                it.name.contains("-b", ignoreCase = true) || 
-                                it.name.contains("-c", ignoreCase = true)
-                            )
-                        } ?: voices.firstOrNull { it.locale.language == "ro" }
-                        
-                        if (maleVoice != null) {
-                            tts?.voice = maleVoice
-                        }
-                    }
-                } catch (e: Exception) {
-                    // Ignore, fallback to default voice with lower pitch
-                }
-            }
-        }
-        tts = textToSpeech
-
-        onDispose {
-            textToSpeech.stop()
-            textToSpeech.shutdown()
-        }
-    }
-    return tts
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrayersContent(innerPadding: PaddingValues) {
-    val tts = rememberTextToSpeech()
-    var currentlyPlayingTitle by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(tts) {
-        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {
-                currentlyPlayingTitle = utteranceId
-            }
-            override fun onDone(utteranceId: String?) {
-                if (currentlyPlayingTitle == utteranceId) {
-                    currentlyPlayingTitle = null
-                }
-            }
-            @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String?) {
-                if (currentlyPlayingTitle == utteranceId) {
-                    currentlyPlayingTitle = null
-                }
-            }
-        })
-    }
-
     Column(
         modifier = Modifier
             .padding(innerPadding)
@@ -135,25 +57,14 @@ fun PrayersContent(innerPadding: PaddingValues) {
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             items(prayersList) { prayer ->
-                PrayerCard(
-                    prayer = prayer,
-                    isPlaying = currentlyPlayingTitle == prayer.title,
-                    onPlayClick = {
-                        if (currentlyPlayingTitle == prayer.title) {
-                            tts?.stop()
-                            currentlyPlayingTitle = null
-                        } else {
-                            tts?.speak(prayer.content, TextToSpeech.QUEUE_FLUSH, null, prayer.title)
-                        }
-                    }
-                )
+                PrayerCard(prayer = prayer)
             }
         }
     }
 }
 
 @Composable
-fun PrayerCard(prayer: Prayer, isPlaying: Boolean, onPlayClick: () -> Unit) {
+fun PrayerCard(prayer: Prayer) {
     var expanded by remember { mutableStateOf(false) }
 
     Card(
@@ -177,14 +88,6 @@ fun PrayerCard(prayer: Prayer, isPlaying: Boolean, onPlayClick: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                
-                IconButton(onClick = onPlayClick) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Filled.Close else Icons.Filled.PlayArrow,
-                        contentDescription = if (isPlaying) "Oprește" else "Ascultă",
-                        tint = BrandRed
-                    )
-                }
             }
             
             if (expanded) {
